@@ -1,103 +1,117 @@
-import Image from "next/image";
+'use client';
+import { useState, useEffect } from 'react';
+import io from 'socket.io-client';
+import Navbar from './Navbar';
 
-export default function Home() {
+const socket = io('http://localhost:4000');
+
+const Home = () => {
+  const [sessionId, setSessionId] = useState('');
+  const [messages, setMessages] = useState<{ user: string; message: string }[]>([]);
+  const [message, setMessage] = useState('');
+  const [user, setUser] = useState('');
+  const [sessionActive, setSessionActive] = useState(false);
+
+  useEffect(() => {
+    const handleMessage = (msg: { user: string; message: string; sessionId: string }) => {
+      if (msg.sessionId === sessionId) {
+        setMessages((prev) => [...prev, msg]);
+      }
+    };
+
+    const handleSessionDeleted = () => {
+      setMessages([]);
+      setSessionActive(false);
+      setSessionId('');
+      alert('Session has been deleted for everyone. The page will refresh.');
+      window.location.reload();
+    };
+
+    socket.on('receive-message', handleMessage);
+    socket.on('session-deleted', handleSessionDeleted);
+
+    return () => {
+      socket.off('receive-message', handleMessage);
+      socket.off('session-deleted', handleSessionDeleted);
+    };
+  }, [sessionId]);
+
+  const createSession = () => {
+    const newSessionId = Math.random().toString(36).substr(2, 9);
+    setSessionId(newSessionId);
+    socket.emit('create-session', newSessionId);
+    setSessionActive(true);
+  };
+
+  const joinSession = () => {
+    if (sessionId.trim()) {
+      socket.emit('join-session', { sessionId, user });
+      setSessionActive(true);
+    }
+  };
+
+  const sendMessage = () => {
+    if (message.trim() && user.trim()) {
+      const msg = { user, message, sessionId };
+      socket.emit('send-message', msg); // Emit to server
+      setMessage(''); // Clear input after sending
+    }
+  };
+
+  const deleteSession = () => {
+    socket.emit('delete-session', sessionId);
+    setMessages([]);
+    setSessionActive(false);
+    setSessionId('');
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+    <div>
+      <Navbar />
+      <div className="p-6 bg-black text-neon-green min-h-screen font-mono">
+        {!sessionActive ? (
+          <>
+            <button onClick={createSession} className="mb-4 p-2 bg-purple-600 hover:bg-purple-700 rounded">Create Session</button>
+            <input
+              type="text"
+              placeholder="Session ID"
+              value={sessionId}
+              onChange={(e) => setSessionId(e.target.value)}
+              className="flex items-center p-2 mb-4 bg-gray-800 text-neon-green w-full border-b-2 border-neon-green"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+            <button onClick={joinSession} className="ml-2 p-2 bg-green-600 hover:bg-green-700 rounded">Join Session</button>
+          </>
+        ) : (
+          <>
+            <input
+              type="text"
+              placeholder="Username"
+              value={user}
+              onChange={(e) => setUser(e.target.value)}
+              className="p-2 mb-4 bg-gray-800 text-neon-green w-full border-b-2 border-neon-green"
+            />
+            <input
+              type="text"
+              placeholder="Message"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              className="p-2 mb-4 bg-gray-800 text-neon-green w-full border-b-2 border-neon-green"
+            />
+            <button onClick={sendMessage} className="ml-2 p-2 bg-blue-600 hover:bg-blue-700 rounded">Send</button>
+            <button onClick={deleteSession} className="ml-2 p-2 bg-red-600 hover:bg-red-700 rounded">Delete Session</button>
+            <h2 className="mt-6 text-xl text-neon-green">Session ID: {sessionId}</h2>
+            <div className="mt-4 space-y-2">
+              {messages.map((msg, index) => (
+                <p key={index} className={msg.user === user ? 'text-right text-neon-green' : 'text-left text-neon-yellow'}>
+                  <strong>{msg.user || 'Unknown'}:</strong> {msg.message || 'No message'}
+                </p>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
-}
+};
+
+export default Home;
