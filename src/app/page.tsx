@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import Navbar from './Navbar';
 
-const socket = io('http://localhost:4000');
+const socket = io('https://whisper-room-server.onrender.com');
 
 const Home = () => {
   const [sessionId, setSessionId] = useState('');
